@@ -5,17 +5,15 @@ import redis
 
 app = FastAPI()
 
-REDIS_HOST = os.getenv("REDIS_HOST", "redis")
-REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
-
-try:
-    r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
-except Exception:
-    r = None
+def get_redis_client():
+    redis_host = os.getenv("REDIS_HOST", "redis")
+    redis_port = int(os.getenv("REDIS_PORT", 6379))
+    return redis.Redis(host=redis_host, port=redis_port, decode_responses=True)
 
 @app.post("/hit/{key}")
 async def hit_counter(key: str):
     try:
+        r = get_redis_client()
         count = r.incr(key)
         return {"key": key, "count": int(count)}
     except Exception as e:
@@ -24,6 +22,7 @@ async def hit_counter(key: str):
 @app.get("/count/{key}")
 async def get_counter(key: str):
     try:
+        r = get_redis_client()
         val = r.get(key)
         count = int(val) if val is not None else 0
         return {"key": key, "count": count}
@@ -33,6 +32,7 @@ async def get_counter(key: str):
 @app.get("/healthz")
 async def health_check():
     try:
+        r = get_redis_client()
         pong = r.ping()
         if pong:
             return {"status": "ok", "redis": "up"}
